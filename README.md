@@ -1,7 +1,7 @@
 # Legal PDF to Instruction Dataset Pipeline
 
 Convert legal regulation PDFs into instruction datasets suitable for fine-tuning LLMs using Ollama models.
-
+![Regulatory Legal Dataset Generation](assets/legal_dataset_ss_1.png)
 
 ## 🚀 Quick Start
 
@@ -10,14 +10,7 @@ Convert legal regulation PDFs into instruction datasets suitable for fine-tuning
 - **Python 3.8+**
 - **Ollama** installed and running ([Install Ollama](https://ollama.ai))
 
-
-### 2. Install Dependencies
-
-```bash
-pip install -r requirements.txt
-```
-
-### 3. Install Ollama Model
+### 2. Install Ollama Model
 
 ```bash
 ollama serve # Start the Ollama server
@@ -26,13 +19,17 @@ ollama pull mistral
 ollama pull phi3:mini 
 ```
 
+### 3. Install Dependencies
 
+```bash
+pip install -r requirements.txt
+```
 
 
 ## 🖥️ Run the Web UI
 
 # Start the web server
-```bash
+```bash 
 uvicorn server:app --reload
 ```
 
@@ -41,12 +38,7 @@ Open http://127.0.0.1:8000 to access the UI. Uploaded PDFs are stored in `data/r
 
 View the dataset and stats at http://127.0.0.1:8000/dataset. That page streams entries from `data/processed/dataset.jsonl` (paged) and shows quick stats by source/model/device and average instruction length.
 
-The pipeline will:
-1. Extract text from all PDFs in `data/raw/`
-2. Split text into contextual chunks
-3. Generate instruction-response pairs using llama3.1:8b
-4. Save the dataset to `data/processed/dataset.jsonl`
-
+![Dataset viewer and stats](assets/legal_dataset_ss_2.png)
 
 You can also choose a device hint (auto/GPU/CPU) and see basic resource usage (CPU %, RSS) for each running task. The CPU-only option forces `num_gpu=0` in the Ollama call to stay off the GPU.
 
