@@ -105,6 +105,15 @@
                 box-shadow: none;
             }
 
+            select {
+                background: var(--panel);
+                color: var(--text);
+                border: 1px solid var(--panel-border);
+                border-radius: 10px;
+                padding: 10px 12px;
+                min-width: 160px;
+            }
+
             .grid {
                 display: grid;
                 grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
@@ -204,6 +213,8 @@
                     accept="application/pdf"
                     multiple
                 />
+                <select id="modelSelect" name="model"></select>
+                <select id="deviceSelect" name="device"></select>
                 <button id="uploadBtn" type="submit">
                     Upload &amp; Process
                 </button>
@@ -218,13 +229,25 @@
 
         <script>
             const fileInput = document.getElementById("fileInput");
+            const modelSelect = document.getElementById("modelSelect");
+            const deviceSelect = document.getElementById("deviceSelect");
             const form = document.getElementById("uploadForm");
             const cards = document.getElementById("cards");
             const uploadBtn = document.getElementById("uploadBtn");
             const ollamaStatus = document.getElementById("ollamaStatus");
 
+            const MODEL_OPTIONS = ["llama3.1:8b", "phi3:mini", "mistral"];
+            const DEVICE_OPTIONS = [
+                { value: "auto", label: "Auto" },
+                { value: "gpu", label: "GPU (default)" },
+                { value: "cpu", label: "CPU only" },
+            ];
+
             let tasks = {};
             let poller = null;
+
+            populateModelOptions();
+            populateDeviceOptions();
 
             form.addEventListener("submit", async (e) => {
                 e.preventDefault();
@@ -239,6 +262,8 @@
                 Array.from(fileInput.files).forEach((file) =>
                     formData.append("files", file),
                 );
+                formData.append("model", modelSelect.value);
+                formData.append("device", deviceSelect.value);
 
                 try {
                     const res = await fetch("/upload", {
@@ -296,6 +321,10 @@
               <span>${task.filename}</span>
               <span class="status ${task.status}">${task.status}</span>
             </div>
+            <div class="meta">
+              <span class="pill">Model: ${task.model || "default"}</span>
+              <span class="pill">Device: ${task.device || "auto"}</span>
+            </div>
             <div class="progress"><span style="width:${pct}%"></span></div>
             <div class="meta">
               <span>${pct}%</span>
@@ -303,7 +332,7 @@
             </div>
             <div class="meta">
               <span>${task.generated || 0} entries</span>
-              <span></span>
+              <span>${formatResources(task)}</span>
             </div>
             <div class="message">${task.message || ""}${task.error ? " · " + task.error : ""}</div>
           </div>
@@ -325,6 +354,18 @@
                 }
             }
 
+            function populateModelOptions() {
+                modelSelect.innerHTML = MODEL_OPTIONS.map(
+                    (m) => `<option value="${m}">${m}</option>`,
+                ).join("");
+            }
+
+            function populateDeviceOptions() {
+                deviceSelect.innerHTML = DEVICE_OPTIONS.map(
+                    (d) => `<option value="${d.value}">${d.label}</option>`,
+                ).join("");
+            }
+
             checkHealth();
             fetchTasks();
 
@@ -341,6 +382,18 @@
                 const rem = secs % 60;
                 if (minutes === 0) return `ETA: ${rem}s`;
                 return `ETA: ${minutes}m ${rem}s`;
+            }
+
+            function formatResources(task) {
+                if (task.status === "failed") return "";
+                const cpu = task.resource_cpu;
+                const mem = task.resource_mem_mb;
+                const cpuStr =
+                    typeof cpu === "number" ? `${cpu.toFixed(1)}% CPU` : "";
+                const memStr =
+                    typeof mem === "number" ? `${mem.toFixed(0)} MB` : "";
+                const parts = [cpuStr, memStr].filter(Boolean);
+                return parts.length ? parts.join(" · ") : "";
             }
         </script>
     </body>

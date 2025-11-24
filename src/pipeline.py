@@ -55,6 +55,8 @@ def append_dataset_entries(
 
 def process_pdf(
     pdf_path: Path,
+    model: Optional[str] = None,
+    device: Optional[str] = None,
     progress_callback: Optional[Callable[[Dict], None]] = None,
 ) -> List[dict]:
     """
@@ -62,6 +64,8 @@ def process_pdf(
 
     Args:
         pdf_path: Path to the PDF file
+        model: Optional model name to use for generation
+        device: Optional device hint (e.g., "cpu" to force CPU)
         progress_callback: Optional callable to report progress events
 
     Returns:
@@ -104,7 +108,7 @@ def process_pdf(
             total_chunks=total_chunks,
             progress=(i / total_chunks),
         )
-        instruction_data = generate_instruction(chunk)
+        instruction_data = generate_instruction(chunk, model=model, device=device)
         if instruction_data:
             instruction_data["source_file"] = pdf_path.name
             instruction_data["chunk_index"] = i

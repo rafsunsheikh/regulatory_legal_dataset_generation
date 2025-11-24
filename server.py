@@ -1,6 +1,7 @@
 """FastAPI server exposing a web UI and upload API for the PDF pipeline."""
 
 import logging
+import os
 import sys
 import threading
 import time
@@ -10,7 +11,7 @@ from dataclasses import asdict, dataclass
 from pathlib import Path
 from typing import Dict, List, Optional
 
-from fastapi import BackgroundTasks, FastAPI, File, HTTPException, UploadFile
+from fastapi import BackgroundTasks, FastAPI, File, Form, HTTPException, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import HTMLResponse
 from fastapi.staticfiles import StaticFiles
@@ -18,7 +19,9 @@ from fastapi.staticfiles import StaticFiles
 # Ensure local imports work when running `uvicorn server:app`
 sys.path.insert(0, str(Path(__file__).parent))
 
-from config import RAW_PDF_DIR
+import psutil
+
+from config import OLLAMA_MODEL, RAW_PDF_DIR
 from src.generator import test_ollama_connection
 from src.pipeline import append_dataset_entries, ensure_processed_dir, process_pdf
 
@@ -51,6 +54,8 @@ class TaskStatus:
 class TaskRecord:
     id: str
     filename: str
+    model: str
+    device: str
     status: str = TaskStatus.QUEUED
     progress: float = 0.0
     generated: int = 0
@@ -61,11 +66,14 @@ class TaskRecord:
     started_at: Optional[float] = None
     updated_at: Optional[float] = None
     eta_seconds: Optional[float] = None
+    resource_cpu: Optional[float] = None  # percent
+    resource_mem_mb: Optional[float] = None
 
 
 tasks: Dict[str, TaskRecord] = {}
 tasks_lock = threading.Lock()
 executor = ThreadPoolExecutor(max_workers=3)
+PROCESS = psutil.Process(os.getpid())
 
 
 def _update_task(task_id: str, **kwargs) -> None:
@@ -76,12 +84,30 @@ def _update_task(task_id: str, **kwargs) -> None:
             setattr(tasks[task_id], key, value)
 
 
-def _register_task(filename: str, output_path: Optional[str] = None) -> TaskRecord:
+def _register_task(
+    filename: str, model: str, device: str, output_path: Optional[str] = None
+) -> TaskRecord:
     task_id = uuid.uuid4().hex
-    record = TaskRecord(id=task_id, filename=filename, output_path=output_path)
+    record = TaskRecord(
+        id=task_id,
+        filename=filename,
+        model=model,
+        device=device,
+        output_path=output_path,
+    )
     with tasks_lock:
         tasks[task_id] = record
     return record
+
+
+def _resource_snapshot() -> Dict[str, float]:
+    """Return current process CPU% (since last call) and RSS in MB."""
+    try:
+        cpu = PROCESS.cpu_percent(interval=None)
+        mem_mb = PROCESS.memory_info().rss / (1024 * 1024)
+        return {"cpu": cpu, "mem_mb": mem_mb}
+    except Exception:
+        return {}
 
 
 def _progress_callback(task_id: str):
@@ -109,12 +135,15 @@ def _progress_callback(task_id: str):
             eta = None
             if progress > 0:
                 eta = max(0.0, (elapsed / progress) - elapsed)
+            resources = _resource_snapshot()
             _update_task(
                 task_id,
                 status=TaskStatus.PROCESSING,
                 progress=progress,
                 eta_seconds=eta,
-                message=f"Generating chunk {idx + 1}/{total}",
+                resource_cpu=resources.get("cpu"),
+                resource_mem_mb=resources.get("mem_mb"),
+                message=f"Generating chunk {idx + 1}/{total} (model: {task.model})",
                 updated_at=now,
             )
         elif stage == "completed":
@@ -146,14 +175,19 @@ def _process_file(task: TaskRecord, saved_path: Path) -> None:
     _update_task(
         task.id,
         status=TaskStatus.PROCESSING,
-        message="Starting extraction",
+        message=f"Starting extraction (model: {task.model}, device: {task.device})",
         started_at=now,
         updated_at=now,
         progress=0.0,
         eta_seconds=None,
     )
     try:
-        entries = process_pdf(saved_path, progress_callback=_progress_callback(task.id))
+        entries = process_pdf(
+            saved_path,
+            model=task.model,
+            device=task.device,
+            progress_callback=_progress_callback(task.id),
+        )
         if not entries:
             raise RuntimeError("No entries generated from document")
 
@@ -213,17 +247,25 @@ async def index() -> HTMLResponse:
 
 @app.post("/upload")
 async def upload_files(
-    background_tasks: BackgroundTasks, files: List[UploadFile] = File(...)
+    background_tasks: BackgroundTasks,
+    files: List[UploadFile] = File(...),
+    model: Optional[str] = Form(None),
+    device: Optional[str] = Form(None),
 ):
     if not files:
         raise HTTPException(status_code=400, detail="No files uploaded")
+
+    selected_model = (model or "").strip() or OLLAMA_MODEL
+    selected_device = (device or "").strip() or "auto"
 
     created_tasks: List[TaskRecord] = []
     for file in files:
         if not file.filename.lower().endswith(".pdf"):
             raise HTTPException(status_code=400, detail="Only PDF files are supported")
         saved_path = _save_upload(file)
-        task = _register_task(file.filename)
+        task = _register_task(
+            file.filename, model=selected_model, device=selected_device
+        )
         created_tasks.append(task)
         background_tasks.add_task(executor.submit, _process_file, task, saved_path)
 

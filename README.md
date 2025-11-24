@@ -29,6 +29,10 @@ Convert legal regulation PDFs into instruction datasets suitable for fine-tuning
 
 ```bash
 ollama pull llama3.1:8b
+ollama pull mistral 
+ollama pull phi3:mini 
+
+
 ```
 
 ### 3. Install Dependencies
@@ -69,7 +73,9 @@ pip install -r requirements.txt
 uvicorn server:app --reload
 ```
 
-Open http://127.0.0.1:8000 to access the UI. Uploaded PDFs are stored in `data/raw/`, processed in the background, and new instruction pairs are appended to `data/processed/dataset.jsonl`. Task progress is exposed at `/tasks`.
+Open http://127.0.0.1:8000 to access the UI. Uploaded PDFs are stored in `data/raw/`, processed in the background, and new instruction pairs are appended to `data/processed/dataset.jsonl`. The UI shows per-file progress, estimated time remaining, generation counts, and lets you pick the Ollama model per upload (edit the `MODEL_OPTIONS` array in `web/index.html` to adjust choices); task details are also exposed at `/tasks`.
+
+You can also choose a device hint (auto/GPU/CPU) and see basic resource usage (CPU %, RSS) for each running task. The CPU-only option forces `num_gpu=0` in the Ollama call to stay off the GPU.
 
 ## ⚙️ Configuration
 
