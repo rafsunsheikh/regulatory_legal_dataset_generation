@@ -112,6 +112,10 @@ def process_pdf(
         if instruction_data:
             instruction_data["source_file"] = pdf_path.name
             instruction_data["chunk_index"] = i
+            if model:
+                instruction_data["model"] = model
+            if device:
+                instruction_data["device"] = device
             dataset_entries.append(instruction_data)
         else:
             logger.warning("Failed to generate instruction for chunk %s", i)

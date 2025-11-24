@@ -205,21 +205,47 @@
                 generate instruction/response pairs while appending to the
                 dataset.
             </p>
-            <form id="uploadForm">
-                <input
-                    id="fileInput"
-                    type="file"
-                    name="files"
-                    accept="application/pdf"
-                    multiple
-                />
-                <select id="modelSelect" name="model"></select>
-                <select id="deviceSelect" name="device"></select>
-                <button id="uploadBtn" type="submit">
-                    Upload &amp; Process
-                </button>
-                <span class="pill" id="ollamaStatus">Waiting for status…</span>
-            </form>
+            <div
+                class="row"
+                style="
+                    justify-content: space-between;
+                    align-items: center;
+                    gap: 8px;
+                "
+            >
+                <form
+                    id="uploadForm"
+                    style="
+                        flex: 1;
+                        display: flex;
+                        gap: 12px;
+                        align-items: center;
+                        flex-wrap: wrap;
+                    "
+                >
+                    <input
+                        id="fileInput"
+                        type="file"
+                        name="files"
+                        accept="application/pdf"
+                        multiple
+                    />
+                    <select id="modelSelect" name="model"></select>
+                    <select id="deviceSelect" name="device"></select>
+                    <button id="uploadBtn" type="submit">
+                        Upload &amp; Process
+                    </button>
+                    <span class="pill" id="ollamaStatus"
+                        >Waiting for status…</span
+                    >
+                </form>
+                <a
+                    class="pill"
+                    style="text-decoration: none; padding: 10px 14px"
+                    href="/dataset"
+                    >View dataset →</a
+                >
+            </div>
             <div id="cards" class="grid"></div>
             <footer>
                 Progress updates every 2 seconds. Dataset entries are appended

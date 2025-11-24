@@ -1,0 +1,339 @@
+<!doctype html>
+<html lang="en">
+    <head>
+        <meta charset="UTF-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+        <title>Dataset Viewer</title>
+        <style>
+            :root {
+                --bg: radial-gradient(circle at 10% 20%, #1b2b52, #0d1224 40%, #0a0d18 80%);
+                --panel: rgba(255, 255, 255, 0.08);
+                --panel-border: rgba(255, 255, 255, 0.14);
+                --accent: #8fe3cf;
+                --accent-2: #f7c266;
+                --text: #e9eef7;
+                --muted: #b3c0d9;
+                --warn: #f69b64;
+                --error: #ff6b6b;
+                --success: #6ad0a7;
+            }
+
+            * {
+                box-sizing: border-box;
+            }
+
+            body {
+                font-family: "Sora", "Segoe UI", sans-serif;
+                color: var(--text);
+                margin: 0;
+                min-height: 100vh;
+                background: var(--bg);
+                display: flex;
+                align-items: flex-start;
+                justify-content: center;
+                padding: 24px;
+            }
+
+            .shell {
+                width: min(1200px, 100%);
+                background: linear-gradient(
+                        145deg,
+                        rgba(255, 255, 255, 0.06),
+                        rgba(255, 255, 255, 0.02)
+                    )
+                    border-box;
+                border: 1px solid var(--panel-border);
+                border-radius: 16px;
+                padding: 24px;
+                box-shadow: 0 20px 80px rgba(0, 0, 0, 0.45);
+                backdrop-filter: blur(12px);
+            }
+
+            header {
+                display: flex;
+                gap: 12px;
+                align-items: center;
+                justify-content: space-between;
+                flex-wrap: wrap;
+            }
+
+            h1 {
+                margin: 0;
+                letter-spacing: -0.01em;
+                font-size: 26px;
+            }
+
+            .lead {
+                color: var(--muted);
+                margin: 4px 0 0 0;
+            }
+
+            a.button {
+                background: linear-gradient(120deg, var(--accent), var(--accent-2));
+                color: #0c1224;
+                padding: 10px 14px;
+                border-radius: 10px;
+                font-weight: 600;
+                text-decoration: none;
+            }
+
+            .grid {
+                display: grid;
+                grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+                gap: 12px;
+                margin: 16px 0 12px 0;
+            }
+
+            .card {
+                background: var(--panel);
+                border: 1px solid var(--panel-border);
+                border-radius: 12px;
+                padding: 12px;
+            }
+
+            .card h3 {
+                margin: 0 0 6px 0;
+                font-size: 16px;
+            }
+
+            .pill {
+                display: inline-flex;
+                align-items: center;
+                gap: 6px;
+                background: rgba(255, 255, 255, 0.06);
+                padding: 6px 10px;
+                border-radius: 999px;
+                font-size: 12px;
+                border: 1px solid var(--panel-border);
+                color: var(--muted);
+                margin: 2px;
+            }
+
+            table {
+                width: 100%;
+                border-collapse: collapse;
+                margin-top: 10px;
+            }
+
+            th,
+            td {
+                padding: 8px;
+                border-bottom: 1px solid var(--panel-border);
+                text-align: left;
+                color: var(--muted);
+                font-size: 13px;
+            }
+
+            th {
+                color: var(--text);
+            }
+
+            .small {
+                font-size: 12px;
+                color: var(--muted);
+            }
+
+            .badge {
+                display: inline-block;
+                padding: 4px 8px;
+                border-radius: 8px;
+                background: rgba(255, 255, 255, 0.06);
+                border: 1px solid var(--panel-border);
+            }
+
+            button {
+                background: linear-gradient(120deg, var(--accent), var(--accent-2));
+                color: #0c1224;
+                border: none;
+                padding: 10px 14px;
+                border-radius: 10px;
+                font-weight: 600;
+                cursor: pointer;
+                transition:
+                    transform 0.1s ease,
+                    box-shadow 0.2s ease;
+            }
+
+            button:disabled {
+                opacity: 0.6;
+                cursor: not-allowed;
+            }
+
+            .row {
+                display: flex;
+                justify-content: space-between;
+                align-items: center;
+                flex-wrap: wrap;
+                gap: 8px;
+            }
+        </style>
+    </head>
+    <body>
+        <div class="shell">
+            <header>
+                <div>
+                    <h1>Dataset Viewer</h1>
+                    <div class="lead">
+                        Inspect generated instruction/response pairs and quick stats.
+                    </div>
+                </div>
+                <div class="row">
+                    <a href="/" class="button">← Back to Uploads</a>
+                </div>
+            </header>
+
+            <div class="grid" id="statsGrid">
+                <div class="card">
+                    <h3>Total Entries</h3>
+                    <div id="statTotal">–</div>
+                </div>
+                <div class="card">
+                    <h3>Avg Instruction Length</h3>
+                    <div id="statAvgInstr">–</div>
+                </div>
+                <div class="card">
+                    <h3>Top Models</h3>
+                    <div id="statModels" class="small">–</div>
+                </div>
+                <div class="card">
+                    <h3>Top Sources</h3>
+                    <div id="statSources" class="small">–</div>
+                </div>
+            </div>
+
+            <div class="row">
+                <div class="lead" id="recordInfo">Entries</div>
+                <button id="loadMore">Load more</button>
+            </div>
+
+            <table>
+                <thead>
+                    <tr>
+                        <th>Instruction</th>
+                        <th>Output</th>
+                        <th>Source</th>
+                        <th>Model</th>
+                        <th>Device</th>
+                    </tr>
+                </thead>
+                <tbody id="tableBody"></tbody>
+            </table>
+        </div>
+
+        <script>
+            const statTotal = document.getElementById("statTotal");
+            const statAvgInstr = document.getElementById("statAvgInstr");
+            const statModels = document.getElementById("statModels");
+            const statSources = document.getElementById("statSources");
+            const tableBody = document.getElementById("tableBody");
+            const recordInfo = document.getElementById("recordInfo");
+            const loadMoreBtn = document.getElementById("loadMore");
+
+            let offset = 0;
+            const pageSize = 100;
+            let total = 0;
+
+            loadMoreBtn.addEventListener("click", () => {
+                fetchRecords();
+            });
+
+            fetchSummary();
+            fetchRecords();
+
+            async function fetchSummary() {
+                try {
+                    const res = await fetch("/api/dataset/summary");
+                    if (!res.ok) throw new Error("Failed to fetch summary");
+                    const data = await res.json();
+                    total = data.total || 0;
+                    statTotal.textContent = total.toLocaleString();
+                    statAvgInstr.textContent = data.avg_instruction_chars
+                        ? `${data.avg_instruction_chars.toFixed(0)} chars`
+                        : "–";
+                    statModels.innerHTML = renderPills(data.by_model);
+                    statSources.innerHTML = renderPills(data.by_source, 5);
+                    updateRecordInfo();
+                } catch (err) {
+                    console.warn(err);
+                }
+            }
+
+            async function fetchRecords() {
+                try {
+                    loadMoreBtn.disabled = true;
+                    loadMoreBtn.textContent = "Loading…";
+                    const res = await fetch(
+                        `/api/dataset/records?offset=${offset}&limit=${pageSize}`,
+                    );
+                    if (!res.ok) throw new Error("Failed to fetch records");
+                    const data = await res.json();
+                    total = data.total || total;
+                    appendRows(data.records || []);
+                    offset += (data.records || []).length;
+                    updateRecordInfo();
+                    loadMoreBtn.disabled = offset >= total;
+                    loadMoreBtn.textContent =
+                        offset >= total ? "All loaded" : "Load more";
+                } catch (err) {
+                    console.warn(err);
+                    loadMoreBtn.disabled = false;
+                    loadMoreBtn.textContent = "Load more";
+                }
+            }
+
+            function appendRows(rows) {
+                if (!rows.length && offset === 0) {
+                    tableBody.innerHTML =
+                        '<tr><td colspan="5" class="small">No dataset entries yet.</td></tr>';
+                    return;
+                }
+                const html = rows
+                    .map((r) => {
+                        return `<tr>
+              <td>${escapeHtml(truncate(r.instruction, 160))}</td>
+              <td>${escapeHtml(truncate(r.output, 160))}</td>
+              <td class="small">${escapeHtml(
+                  r.source_file || "unknown",
+              )}</td>
+              <td class="small">${escapeHtml(r.model || "unknown")}</td>
+              <td class="small">${escapeHtml(r.device || "auto")}</td>
+            </tr>`;
+                    })
+                    .join("");
+                tableBody.insertAdjacentHTML("beforeend", html);
+            }
+
+            function renderPills(counts, maxItems = 4) {
+                if (!counts || Object.keys(counts).length === 0) return "–";
+                const sorted = Object.entries(counts).sort(
+                    (a, b) => b[1] - a[1],
+                );
+                const trimmed = sorted.slice(0, maxItems);
+                return trimmed
+                    .map(
+                        ([key, val]) =>
+                            `<span class="pill">${escapeHtml(key)} · ${val}</span>`,
+                    )
+                    .join("");
+            }
+
+            function truncate(text, maxLen) {
+                if (!text) return "";
+                const s = String(text);
+                if (s.length <= maxLen) return s;
+                return s.slice(0, maxLen - 3) + "...";
+            }
+
+            function escapeHtml(str) {
+                return String(str || "")
+                    .replace(/&/g, "&amp;")
+                    .replace(/</g, "&lt;")
+                    .replace(/>/g, "&gt;");
+            }
+
+            function updateRecordInfo() {
+                recordInfo.textContent = `Showing ${offset} of ${total} entries`;
+            }
+        </script>
+    </body>
+</html>

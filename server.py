@@ -6,14 +6,16 @@ import sys
 import threading
 import time
 import uuid
+from collections import Counter
 from concurrent.futures import ThreadPoolExecutor
 from dataclasses import asdict, dataclass
 from pathlib import Path
 from typing import Dict, List, Optional
 
+import jsonlines
 from fastapi import BackgroundTasks, FastAPI, File, Form, HTTPException, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import HTMLResponse
+from fastapi.responses import HTMLResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
 
 # Ensure local imports work when running `uvicorn server:app`
@@ -21,7 +23,7 @@ sys.path.insert(0, str(Path(__file__).parent))
 
 import psutil
 
-from config import OLLAMA_MODEL, RAW_PDF_DIR
+from config import OLLAMA_MODEL, OUTPUT_DATASET_FILE, RAW_PDF_DIR
 from src.generator import test_ollama_connection
 from src.pipeline import append_dataset_entries, ensure_processed_dir, process_pdf
 
@@ -169,6 +171,71 @@ def _progress_callback(task_id: str):
     return _callback
 
 
+def _dataset_path() -> Path:
+    return Path(OUTPUT_DATASET_FILE)
+
+
+def _dataset_summary() -> Dict:
+    """Compute lightweight stats over the dataset JSONL."""
+    path = _dataset_path()
+    if not path.exists():
+        return {
+            "total": 0,
+            "by_source": {},
+            "by_model": {},
+            "by_device": {},
+            "avg_instruction_chars": 0,
+        }
+
+    by_source: Counter[str] = Counter()
+    by_model: Counter[str] = Counter()
+    by_device: Counter[str] = Counter()
+    total = 0
+    instr_chars = 0
+
+    with jsonlines.open(path, mode="r") as reader:
+        for row in reader:
+            total += 1
+            by_source[row.get("source_file", "unknown")] += 1
+            by_model[row.get("model", row.get("ollama_model", "unknown"))] += 1
+            by_device[row.get("device", "unknown")] += 1
+            instr_chars += len(str(row.get("instruction", "")))
+
+    avg_instr = instr_chars / total if total else 0
+
+    return {
+        "total": total,
+        "by_source": dict(by_source),
+        "by_model": dict(by_model),
+        "by_device": dict(by_device),
+        "avg_instruction_chars": avg_instr,
+    }
+
+
+def _dataset_records(limit: int = 100, offset: int = 0) -> Dict:
+    """Return a slice of dataset entries."""
+    path = _dataset_path()
+    if not path.exists():
+        return {"records": [], "total": 0, "limit": limit, "offset": offset}
+
+    max_limit = 500
+    limit = min(max_limit, max(1, limit))
+    offset = max(0, offset)
+
+    records: List[Dict] = []
+    total = 0
+    with jsonlines.open(path, mode="r") as reader:
+        for idx, row in enumerate(reader):
+            total += 1
+            if idx < offset:
+                continue
+            if len(records) >= limit:
+                continue
+            records.append(row)
+
+    return {"records": records, "total": total, "limit": limit, "offset": offset}
+
+
 def _process_file(task: TaskRecord, saved_path: Path) -> None:
     logger.info("Starting task %s for %s", task.id, task.filename)
     now = time.time()
@@ -245,6 +312,14 @@ async def index() -> HTMLResponse:
     return HTMLResponse("<h3>UI not found. Upload endpoint: POST /upload</h3>")
 
 
+@app.get("/dataset", response_class=HTMLResponse)
+async def dataset_page() -> HTMLResponse:
+    page_path = web_dir / "dataset.html"
+    if page_path.exists():
+        return HTMLResponse(page_path.read_text())
+    return HTMLResponse("<h3>Dataset UI not found.</h3>")
+
+
 @app.post("/upload")
 async def upload_files(
     background_tasks: BackgroundTasks,
@@ -290,3 +365,13 @@ async def get_task(task_id: str) -> Dict:
 @app.get("/health")
 async def health() -> Dict[str, str]:
     return {"status": "ok"}
+
+
+@app.get("/api/dataset/summary")
+async def dataset_summary() -> Dict:
+    return _dataset_summary()
+
+
+@app.get("/api/dataset/records")
+async def dataset_records(limit: int = 100, offset: int = 0) -> Dict:
+    return _dataset_records(limit=limit, offset=offset)
