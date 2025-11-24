@@ -17,6 +17,8 @@ def generate_instruction(
     chunk: str,
     model: Optional[str] = None,
     device: Optional[str] = None,
+    temperature: Optional[float] = None,
+    max_retries: Optional[int] = None,
     prompt: Optional[str] = None,
     retry_count: int = 0,
 ) -> Optional[Dict[str, str]]:
@@ -39,11 +41,13 @@ def generate_instruction(
         # Format the prompt with the chunk
         prompt_text = (prompt or INSTRUCTION_PROMPT).format(chunk=chunk)
         target_model = model or OLLAMA_MODEL
+        target_temperature = TEMPERATURE if temperature is None else temperature
+        retry_limit = MAX_RETRIES if max_retries is None else max_retries
 
         # Call Ollama API
         logger.info(f"Generating instruction with {target_model}...")
         options = {
-            "temperature": TEMPERATURE,
+            "temperature": target_temperature,
         }
         # If explicitly CPU, force no GPU layers.
         if device == "cpu":
@@ -83,14 +87,16 @@ def generate_instruction(
         logger.error(f"Failed to parse JSON response: {e}")
         logger.debug(f"Response content: {content}")
 
-        if retry_count < MAX_RETRIES:
-            logger.info(f"Retrying... (attempt {retry_count + 1}/{MAX_RETRIES})")
+        if retry_count < retry_limit:
+            logger.info(f"Retrying... (attempt {retry_count + 1}/{retry_limit})")
             time.sleep(2)  # Brief delay before retry
             return generate_instruction(
                 chunk,
                 model=model,
                 device=device,
                 prompt=prompt,
+                temperature=temperature,
+                max_retries=max_retries,
                 retry_count=retry_count + 1,
             )
         return None
@@ -98,14 +104,16 @@ def generate_instruction(
     except Exception as e:
         logger.error(f"Error generating instruction: {e}")
 
-        if retry_count < MAX_RETRIES:
-            logger.info(f"Retrying... (attempt {retry_count + 1}/{MAX_RETRIES})")
+        if retry_count < retry_limit:
+            logger.info(f"Retrying... (attempt {retry_count + 1}/{retry_limit})")
             time.sleep(2)
             return generate_instruction(
                 chunk,
                 model=model,
                 device=device,
                 prompt=prompt,
+                temperature=temperature,
+                max_retries=max_retries,
                 retry_count=retry_count + 1,
             )
         return None

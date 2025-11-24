@@ -59,6 +59,10 @@ class TaskRecord:
     model: str
     device: str
     prompt: Optional[str] = None
+    chunk_size: Optional[int] = None
+    chunk_overlap: Optional[int] = None
+    temperature: Optional[float] = None
+    max_retries: Optional[int] = None
     status: str = TaskStatus.QUEUED
     progress: float = 0.0
     generated: int = 0
@@ -92,6 +96,10 @@ def _register_task(
     model: str,
     device: str,
     prompt: Optional[str] = None,
+    chunk_size: Optional[int] = None,
+    chunk_overlap: Optional[int] = None,
+    temperature: Optional[float] = None,
+    max_retries: Optional[int] = None,
     output_path: Optional[str] = None,
 ) -> TaskRecord:
     task_id = uuid.uuid4().hex
@@ -101,6 +109,10 @@ def _register_task(
         model=model,
         device=device,
         prompt=prompt,
+        chunk_size=chunk_size,
+        chunk_overlap=chunk_overlap,
+        temperature=temperature,
+        max_retries=max_retries,
         output_path=output_path,
     )
     with tasks_lock:
@@ -116,6 +128,24 @@ def _resource_snapshot() -> Dict[str, float]:
         return {"cpu": cpu, "mem_mb": mem_mb}
     except Exception:
         return {}
+
+
+def _to_int(value, field: str) -> Optional[int]:
+    if value in (None, "", []):
+        return None
+    try:
+        return int(value)
+    except Exception:
+        raise HTTPException(status_code=400, detail=f"Invalid integer for {field}")
+
+
+def _to_float(value, field: str) -> Optional[float]:
+    if value in (None, "", []):
+        return None
+    try:
+        return float(value)
+    except Exception:
+        raise HTTPException(status_code=400, detail=f"Invalid float for {field}")
 
 
 def _progress_callback(task_id: str):
@@ -190,12 +220,14 @@ def _dataset_summary() -> Dict:
             "by_source": {},
             "by_model": {},
             "by_device": {},
+            "by_prompt": {},
             "avg_instruction_chars": 0,
         }
 
     by_source: Counter[str] = Counter()
     by_model: Counter[str] = Counter()
     by_device: Counter[str] = Counter()
+    by_prompt: Counter[str] = Counter()
     total = 0
     instr_chars = 0
 
@@ -205,6 +237,8 @@ def _dataset_summary() -> Dict:
             by_source[row.get("source_file", "unknown")] += 1
             by_model[row.get("model", row.get("ollama_model", "unknown"))] += 1
             by_device[row.get("device", "unknown")] += 1
+            if row.get("prompt"):
+                by_prompt["custom"] += 1
             instr_chars += len(str(row.get("instruction", "")))
 
     avg_instr = instr_chars / total if total else 0
@@ -214,6 +248,7 @@ def _dataset_summary() -> Dict:
         "by_source": dict(by_source),
         "by_model": dict(by_model),
         "by_device": dict(by_device),
+        "by_prompt": dict(by_prompt),
         "avg_instruction_chars": avg_instr,
     }
 
@@ -260,6 +295,10 @@ def _process_file(task: TaskRecord, saved_path: Path) -> None:
             model=task.model,
             device=task.device,
             prompt=task.prompt,
+            chunk_size=task.chunk_size,
+            chunk_overlap=task.chunk_overlap,
+            temperature=task.temperature,
+            max_retries=task.max_retries,
             progress_callback=_progress_callback(task.id),
         )
         if not entries:
@@ -334,6 +373,10 @@ async def upload_files(
     model: Optional[str] = Form(None),
     device: Optional[str] = Form(None),
     prompt: Optional[str] = Form(None),
+    chunk_size: Optional[int] = Form(None),
+    chunk_overlap: Optional[int] = Form(None),
+    temperature: Optional[float] = Form(None),
+    max_retries: Optional[int] = Form(None),
 ):
     if not files:
         raise HTTPException(status_code=400, detail="No files uploaded")
@@ -341,6 +384,10 @@ async def upload_files(
     selected_model = (model or "").strip() or OLLAMA_MODEL
     selected_device = (device or "").strip() or "auto"
     selected_prompt = (prompt or "").strip() or None
+    selected_chunk_size = _to_int(chunk_size, "chunk_size")
+    selected_chunk_overlap = _to_int(chunk_overlap, "chunk_overlap")
+    selected_temperature = _to_float(temperature, "temperature")
+    selected_max_retries = _to_int(max_retries, "max_retries")
 
     created_tasks: List[TaskRecord] = []
     for file in files:
@@ -352,6 +399,10 @@ async def upload_files(
             model=selected_model,
             device=selected_device,
             prompt=selected_prompt,
+            chunk_size=selected_chunk_size,
+            chunk_overlap=selected_chunk_overlap,
+            temperature=selected_temperature,
+            max_retries=selected_max_retries,
         )
         created_tasks.append(task)
         background_tasks.add_task(executor.submit, _process_file, task, saved_path)
@@ -392,3 +443,18 @@ async def dataset_records(limit: int = 100, offset: int = 0) -> Dict:
 @app.get("/api/prompt")
 async def get_prompt() -> Dict[str, str]:
     return {"prompt": INSTRUCTION_PROMPT}
+
+
+@app.get("/api/config-defaults")
+async def config_defaults() -> Dict:
+    from config import CHUNK_OVERLAP, CHUNK_SIZE, MAX_RETRIES, TEMPERATURE
+
+    return {
+        "model": OLLAMA_MODEL,
+        "device": "auto",
+        "chunk_size": CHUNK_SIZE,
+        "chunk_overlap": CHUNK_OVERLAP,
+        "temperature": TEMPERATURE,
+        "max_retries": MAX_RETRIES,
+        "prompt": INSTRUCTION_PROMPT,
+    }

@@ -32,21 +32,13 @@ pip install -r requirements.txt
 uvicorn server:app --reload
 ```
 
-Open http://127.0.0.1:8000 to access the UI. Uploaded PDFs are stored in `data/raw/`, processed in the background, and new instruction pairs are appended to `data/processed/dataset.jsonl`. The UI shows per-file progress, estimated time remaining, generation counts, and lets you pick the Ollama model and device per upload (edit the `MODEL_OPTIONS` array in `web/index.html` to adjust choices); task details are also exposed at `/tasks`. You can view/edit the prompt template before running an upload; the edited prompt is used for that run only.
+Open http://127.0.0.1:8000 to access the UI. Uploaded PDFs are stored in `data/raw/`, processed in the background, and new instruction pairs are appended to `data/processed/dataset.jsonl`. The UI shows per-file progress, estimated time remaining, generation counts, and lets you pick the Ollama model and device per upload (edit the `MODEL_OPTIONS` array in `web/index.html` to adjust choices); task details are also exposed at `/tasks`. You can view/edit the prompt template and override run-time config (chunk size/overlap, temperature, retries) before running an upload; the edited values apply to that run only.
 
 
 View the dataset and stats at http://127.0.0.1:8000/dataset. That page streams entries from `data/processed/dataset.jsonl` (paged) and shows quick stats by source/model/device and average instruction length.
 
 You can also choose a device hint (auto/GPU/CPU) and see basic resource usage (CPU %, RSS) for each running task. The CPU-only option forces `num_gpu=0` in the Ollama call to stay off the GPU.
 
-## ⚙️ Configuration
-
-Edit `config.py` to customize:
-
-- **Model**: Change `OLLAMA_MODEL` to use different models
-- **Chunk Size**: Adjust `CHUNK_SIZE` and `CHUNK_OVERLAP`
-- **Temperature**: Control generation creativity (0.0-1.0)
-- **Prompt Template**: Customize `INSTRUCTION_PROMPT`
 
 ## 📊 Output Format
 
@@ -76,16 +68,6 @@ The generated dataset is in JSONL format with the following structure:
 - Check Ollama logs for model issues
 - Reduce `CHUNK_SIZE` if chunks are too large
 - Adjust `TEMPERATURE` for better results
-
-## 📝 Example Usage
-
-```bash
-# Process PDFs and generate dataset
-python main.py
-
-# View the generated dataset
-head -n 1 data/processed/dataset.jsonl | python -m json.tool
-```
 
 ## 🎯 Next Steps
 

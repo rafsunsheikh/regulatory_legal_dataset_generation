@@ -58,6 +58,10 @@ def process_pdf(
     model: Optional[str] = None,
     device: Optional[str] = None,
     prompt: Optional[str] = None,
+    chunk_size: Optional[int] = None,
+    chunk_overlap: Optional[int] = None,
+    temperature: Optional[float] = None,
+    max_retries: Optional[int] = None,
     progress_callback: Optional[Callable[[Dict], None]] = None,
 ) -> List[dict]:
     """
@@ -90,7 +94,9 @@ def process_pdf(
     report("cleaned", file=pdf_path.name, characters=len(cleaned_text))
     logger.info("Cleaned text: %s characters", len(cleaned_text))
 
-    chunks = chunk_text(cleaned_text, CHUNK_SIZE, CHUNK_OVERLAP)
+    chunk_sz = CHUNK_SIZE if chunk_size is None else chunk_size
+    chunk_ov = CHUNK_OVERLAP if chunk_overlap is None else chunk_overlap
+    chunks = chunk_text(cleaned_text, chunk_sz, chunk_ov)
     total_chunks = len(chunks)
     report("chunked", file=pdf_path.name, total_chunks=total_chunks)
     logger.info("Created %s chunks", total_chunks)
@@ -110,7 +116,12 @@ def process_pdf(
             progress=(i / total_chunks),
         )
         instruction_data = generate_instruction(
-            chunk, model=model, device=device, prompt=prompt
+            chunk,
+            model=model,
+            device=device,
+            prompt=prompt,
+            temperature=temperature,
+            max_retries=max_retries,
         )
         if instruction_data:
             instruction_data["source_file"] = pdf_path.name
@@ -121,6 +132,10 @@ def process_pdf(
                 instruction_data["device"] = device
             if prompt:
                 instruction_data["prompt"] = prompt
+            instruction_data["chunk_size"] = chunk_sz
+            instruction_data["chunk_overlap"] = chunk_ov
+            if temperature is not None:
+                instruction_data["temperature"] = temperature
             dataset_entries.append(instruction_data)
         else:
             logger.warning("Failed to generate instruction for chunk %s", i)

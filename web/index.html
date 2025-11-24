@@ -125,6 +125,35 @@
                 font-family: "Sora", "Segoe UI", sans-serif;
             }
 
+            .config-grid {
+                display: grid;
+                grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+                gap: 10px;
+                margin-top: 10px;
+            }
+
+            .config-field {
+                display: flex;
+                flex-direction: column;
+                gap: 4px;
+            }
+
+            .config-field label {
+                font-size: 13px;
+                color: var(--text);
+                display: flex;
+                justify-content: space-between;
+                align-items: center;
+            }
+
+            .config-field input {
+                padding: 10px;
+                border-radius: 8px;
+                border: 1px solid var(--panel-border);
+                background: var(--panel);
+                color: var(--text);
+            }
+
             .grid {
                 display: grid;
                 grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
@@ -274,6 +303,74 @@
                 </div>
             </div>
             <div id="cards" class="grid"></div>
+            <div class="card" style="margin-top: 12px">
+                <div class="meta" style="justify-content: space-between">
+                    <span>Run configuration</span>
+                    <span class="small">Overrides for this run only</span>
+                </div>
+                <div class="config-grid">
+                    <div class="config-field">
+                        <label for="chunkSize"
+                            >Chunk size
+                            <span class="small"
+                                >Characters per chunk</span
+                            ></label
+                        >
+                        <input
+                            id="chunkSize"
+                            name="chunk_size"
+                            type="number"
+                            min="100"
+                            step="50"
+                        />
+                    </div>
+                    <div class="config-field">
+                        <label for="chunkOverlap"
+                            >Chunk overlap
+                            <span class="small"
+                                >Context carried between chunks</span
+                            ></label
+                        >
+                        <input
+                            id="chunkOverlap"
+                            name="chunk_overlap"
+                            type="number"
+                            min="0"
+                            step="50"
+                        />
+                    </div>
+                    <div class="config-field">
+                        <label for="temperature"
+                            >Temperature
+                            <span class="small">Creativity (0-1)</span></label
+                        >
+                        <input
+                            id="temperature"
+                            name="temperature"
+                            type="number"
+                            min="0"
+                            max="1"
+                            step="0.05"
+                        />
+                    </div>
+                    <div class="config-field">
+                        <label for="maxRetries"
+                            >Max retries
+                            <span class="small"
+                                >Generation retries per chunk</span
+                            ></label
+                        >
+                        <input
+                            id="maxRetries"
+                            name="max_retries"
+                            type="number"
+                            min="0"
+                            max="10"
+                            step="1"
+                        />
+                    </div>
+                </div>
+            </div>
             <footer>
                 <span>
                     Progress updates every 2 seconds. Dataset entries are
@@ -302,6 +399,10 @@
             const ollamaStatus = document.getElementById("ollamaStatus");
             const promptInput = document.getElementById("promptInput");
             const promptMeta = document.getElementById("promptMeta");
+            const chunkSizeInput = document.getElementById("chunkSize");
+            const chunkOverlapInput = document.getElementById("chunkOverlap");
+            const temperatureInput = document.getElementById("temperature");
+            const maxRetriesInput = document.getElementById("maxRetries");
 
             const MODEL_OPTIONS = ["llama3.1:8b", "phi3:mini", "mistral"];
             const DEVICE_OPTIONS = [
@@ -309,6 +410,7 @@
                 { value: "gpu", label: "GPU (default)" },
                 { value: "cpu", label: "CPU only" },
             ];
+            let defaultConfig = {};
 
             let tasks = {};
             let poller = null;
@@ -316,6 +418,7 @@
             populateModelOptions();
             populateDeviceOptions();
             fetchPrompt();
+            fetchConfigDefaults();
 
             form.addEventListener("submit", async (e) => {
                 e.preventDefault();
@@ -333,6 +436,14 @@
                 formData.append("model", modelSelect.value);
                 formData.append("device", deviceSelect.value);
                 formData.append("prompt", promptInput.value);
+                if (chunkSizeInput.value)
+                    formData.append("chunk_size", chunkSizeInput.value);
+                if (chunkOverlapInput.value)
+                    formData.append("chunk_overlap", chunkOverlapInput.value);
+                if (temperatureInput.value)
+                    formData.append("temperature", temperatureInput.value);
+                if (maxRetriesInput.value)
+                    formData.append("max_retries", maxRetriesInput.value);
 
                 try {
                     const res = await fetch("/upload", {
@@ -443,6 +554,29 @@
                     promptInput.value = data.prompt || "";
                     updatePromptMeta();
                     promptInput.addEventListener("input", updatePromptMeta);
+                } catch (err) {
+                    console.warn(err);
+                }
+            }
+
+            async function fetchConfigDefaults() {
+                try {
+                    const res = await fetch("/api/config-defaults");
+                    if (!res.ok)
+                        throw new Error("Failed to fetch config defaults");
+                    defaultConfig = await res.json();
+                    if (defaultConfig.model)
+                        modelSelect.value = defaultConfig.model;
+                    if (defaultConfig.device)
+                        deviceSelect.value = defaultConfig.device;
+                    if (defaultConfig.chunk_size)
+                        chunkSizeInput.value = defaultConfig.chunk_size;
+                    if (defaultConfig.chunk_overlap)
+                        chunkOverlapInput.value = defaultConfig.chunk_overlap;
+                    if (defaultConfig.temperature !== undefined)
+                        temperatureInput.value = defaultConfig.temperature;
+                    if (defaultConfig.max_retries !== undefined)
+                        maxRetriesInput.value = defaultConfig.max_retries;
                 } catch (err) {
                     console.warn(err);
                 }
