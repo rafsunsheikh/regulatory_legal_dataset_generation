@@ -1,7 +1,7 @@
 # Legal PDF to Instruction Dataset Pipeline
 
 Convert legal regulation PDFs into instruction datasets suitable for fine-tuning LLMs using Ollama models.
-
+![Regulatory Legal Dataset Generation](assets/legal_dataset_ss_1.png)
 
 ## 🚀 Quick Start
 
@@ -37,10 +37,6 @@ Open http://127.0.0.1:8000 to access the UI. Uploaded PDFs are stored in `data/r
 
 
 View the dataset and stats at http://127.0.0.1:8000/dataset. That page streams entries from `data/processed/dataset.jsonl` (paged) and shows quick stats by source/model/device and average instruction length.
-
-## 📸 Screenshots
-
-![Upload and configuration UI](assets/legal_dataset_ss_1.png)
 
 ![Dataset viewer and stats](assets/legal_dataset_ss_2.png)
 
