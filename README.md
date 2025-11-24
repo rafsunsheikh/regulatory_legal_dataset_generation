@@ -29,6 +29,7 @@ pip install -r requirements.txt
 ## 🖥️ Run the Web UI
 
 # Start the web server
+```bash 
 uvicorn server:app --reload
 ```
 
