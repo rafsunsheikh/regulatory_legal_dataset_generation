@@ -6,7 +6,12 @@
         <title>Dataset Viewer</title>
         <style>
             :root {
-                --bg: radial-gradient(circle at 10% 20%, #1b2b52, #0d1224 40%, #0a0d18 80%);
+                --bg: radial-gradient(
+                    circle at 10% 20%,
+                    #1b2b52,
+                    #0d1224 40%,
+                    #0a0d18 80%
+                );
                 --panel: rgba(255, 255, 255, 0.08);
                 --panel-border: rgba(255, 255, 255, 0.14);
                 --accent: #8fe3cf;
@@ -69,7 +74,11 @@
             }
 
             a.button {
-                background: linear-gradient(120deg, var(--accent), var(--accent-2));
+                background: linear-gradient(
+                    120deg,
+                    var(--accent),
+                    var(--accent-2)
+                );
                 color: #0c1224;
                 padding: 10px 14px;
                 border-radius: 10px;
@@ -142,7 +151,11 @@
             }
 
             button {
-                background: linear-gradient(120deg, var(--accent), var(--accent-2));
+                background: linear-gradient(
+                    120deg,
+                    var(--accent),
+                    var(--accent-2)
+                );
                 color: #0c1224;
                 border: none;
                 padding: 10px 14px;
@@ -174,7 +187,8 @@
                 <div>
                     <h1>Dataset Viewer</h1>
                     <div class="lead">
-                        Inspect generated instruction/response pairs and quick stats.
+                        Inspect generated instruction/response pairs and quick
+                        stats.
                     </div>
                 </div>
                 <div class="row">
@@ -210,6 +224,7 @@
                 <thead>
                     <tr>
                         <th>Instruction</th>
+                        <th>Input</th>
                         <th>Output</th>
                         <th>Source</th>
                         <th>Model</th>
@@ -284,17 +299,16 @@
             function appendRows(rows) {
                 if (!rows.length && offset === 0) {
                     tableBody.innerHTML =
-                        '<tr><td colspan="5" class="small">No dataset entries yet.</td></tr>';
+                        '<tr><td colspan="6" class="small">No dataset entries yet.</td></tr>';
                     return;
                 }
                 const html = rows
                     .map((r) => {
                         return `<tr>
               <td>${escapeHtml(truncate(r.instruction, 160))}</td>
+              <td>${escapeHtml(truncate(r.input, 120))}</td>
               <td>${escapeHtml(truncate(r.output, 160))}</td>
-              <td class="small">${escapeHtml(
-                  r.source_file || "unknown",
-              )}</td>
+              <td class="small">${escapeHtml(r.source_file || "unknown")}</td>
               <td class="small">${escapeHtml(r.model || "unknown")}</td>
               <td class="small">${escapeHtml(r.device || "auto")}</td>
             </tr>`;
