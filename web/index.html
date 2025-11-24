@@ -205,6 +205,11 @@
                 margin-top: 14px;
                 color: var(--muted);
                 font-size: 13px;
+                display: flex;
+                justify-content: space-between;
+                align-items: center;
+                flex-wrap: wrap;
+                gap: 8px;
             }
         </style>
     </head>
@@ -270,8 +275,20 @@
             </div>
             <div id="cards" class="grid"></div>
             <footer>
-                Progress updates every 2 seconds. Dataset entries are appended
-                to <code>data/processed/dataset.jsonl</code>.
+                <span>
+                    Progress updates every 2 seconds. Dataset entries are
+                    appended to <code>data/processed/dataset.jsonl</code>.
+                </span>
+                <span>
+                    Creating dreams with code by
+                    <a
+                        href="https://rafsunsheikh.github.io/"
+                        target="_blank"
+                        rel="noreferrer"
+                        >MD Rafsun Sheikh</a
+                    >
+                    · © 2025
+                </span>
             </footer>
         </div>
 

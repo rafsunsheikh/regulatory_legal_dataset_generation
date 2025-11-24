@@ -1,22 +1,7 @@
 # Legal PDF to Instruction Dataset Pipeline
 
-Convert legal regulation PDFs into instruction datasets suitable for fine-tuning LLMs using Ollama's **llama3.1:8b** model.
+Convert legal regulation PDFs into instruction datasets suitable for fine-tuning LLMs using Ollama models.
 
-## 📁 Project Structure
-
-```
-.
-├── data/
-│   ├── raw/              # Place your PDF files here
-│   └── processed/        # Generated datasets saved here
-├── src/
-│   ├── extractor.py      # PDF text extraction
-│   ├── chunker.py        # Text chunking logic
-│   └── generator.py      # Instruction generation with Ollama
-├── config.py             # Configuration settings
-├── main.py               # Main pipeline script
-└── requirements.txt      # Python dependencies
-```
 
 ## 🚀 Quick Start
 
@@ -28,11 +13,10 @@ Convert legal regulation PDFs into instruction datasets suitable for fine-tuning
 ### 2. Install Ollama Model
 
 ```bash
+ollama serve # Start the Ollama server
 ollama pull llama3.1:8b
 ollama pull mistral 
 ollama pull phi3:mini 
-
-
 ```
 
 ### 3. Install Dependencies
@@ -41,39 +25,15 @@ ollama pull phi3:mini
 pip install -r requirements.txt
 ```
 
-### 4. Add Your PDFs
-
-Place your legal regulation PDF files in the `data/raw/` directory:
-
-```bash
-cp your-legal-document.pdf data/raw/
-```
-
-### 5. Run the Pipeline
-
-```bash
-python main.py
-```
-
-The pipeline will:
-1. Extract text from all PDFs in `data/raw/`
-2. Split text into contextual chunks
-3. Generate instruction-response pairs using llama3.1:8b
-4. Append results to `data/processed/dataset.jsonl`
 
 ## 🖥️ Run the Web UI
-
-Upload multiple PDFs at once and monitor progress via a simple web interface.
-
-```bash
-# Install dependencies (includes FastAPI + uvicorn)
-pip install -r requirements.txt
 
 # Start the web server
 uvicorn server:app --reload
 ```
 
 Open http://127.0.0.1:8000 to access the UI. Uploaded PDFs are stored in `data/raw/`, processed in the background, and new instruction pairs are appended to `data/processed/dataset.jsonl`. The UI shows per-file progress, estimated time remaining, generation counts, and lets you pick the Ollama model and device per upload (edit the `MODEL_OPTIONS` array in `web/index.html` to adjust choices); task details are also exposed at `/tasks`. You can view/edit the prompt template before running an upload; the edited prompt is used for that run only.
+
 
 View the dataset and stats at http://127.0.0.1:8000/dataset. That page streams entries from `data/processed/dataset.jsonl` (paged) and shows quick stats by source/model/device and average instruction length.
 
