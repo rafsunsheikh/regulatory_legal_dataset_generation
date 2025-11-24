@@ -23,7 +23,7 @@ sys.path.insert(0, str(Path(__file__).parent))
 
 import psutil
 
-from config import OLLAMA_MODEL, OUTPUT_DATASET_FILE, RAW_PDF_DIR
+from config import INSTRUCTION_PROMPT, OLLAMA_MODEL, OUTPUT_DATASET_FILE, RAW_PDF_DIR
 from src.generator import test_ollama_connection
 from src.pipeline import append_dataset_entries, ensure_processed_dir, process_pdf
 
@@ -58,6 +58,7 @@ class TaskRecord:
     filename: str
     model: str
     device: str
+    prompt: Optional[str] = None
     status: str = TaskStatus.QUEUED
     progress: float = 0.0
     generated: int = 0
@@ -87,7 +88,11 @@ def _update_task(task_id: str, **kwargs) -> None:
 
 
 def _register_task(
-    filename: str, model: str, device: str, output_path: Optional[str] = None
+    filename: str,
+    model: str,
+    device: str,
+    prompt: Optional[str] = None,
+    output_path: Optional[str] = None,
 ) -> TaskRecord:
     task_id = uuid.uuid4().hex
     record = TaskRecord(
@@ -95,6 +100,7 @@ def _register_task(
         filename=filename,
         model=model,
         device=device,
+        prompt=prompt,
         output_path=output_path,
     )
     with tasks_lock:
@@ -253,6 +259,7 @@ def _process_file(task: TaskRecord, saved_path: Path) -> None:
             saved_path,
             model=task.model,
             device=task.device,
+            prompt=task.prompt,
             progress_callback=_progress_callback(task.id),
         )
         if not entries:
@@ -326,12 +333,14 @@ async def upload_files(
     files: List[UploadFile] = File(...),
     model: Optional[str] = Form(None),
     device: Optional[str] = Form(None),
+    prompt: Optional[str] = Form(None),
 ):
     if not files:
         raise HTTPException(status_code=400, detail="No files uploaded")
 
     selected_model = (model or "").strip() or OLLAMA_MODEL
     selected_device = (device or "").strip() or "auto"
+    selected_prompt = (prompt or "").strip() or None
 
     created_tasks: List[TaskRecord] = []
     for file in files:
@@ -339,7 +348,10 @@ async def upload_files(
             raise HTTPException(status_code=400, detail="Only PDF files are supported")
         saved_path = _save_upload(file)
         task = _register_task(
-            file.filename, model=selected_model, device=selected_device
+            file.filename,
+            model=selected_model,
+            device=selected_device,
+            prompt=selected_prompt,
         )
         created_tasks.append(task)
         background_tasks.add_task(executor.submit, _process_file, task, saved_path)
@@ -375,3 +387,8 @@ async def dataset_summary() -> Dict:
 @app.get("/api/dataset/records")
 async def dataset_records(limit: int = 100, offset: int = 0) -> Dict:
     return _dataset_records(limit=limit, offset=offset)
+
+
+@app.get("/api/prompt")
+async def get_prompt() -> Dict[str, str]:
+    return {"prompt": INSTRUCTION_PROMPT}

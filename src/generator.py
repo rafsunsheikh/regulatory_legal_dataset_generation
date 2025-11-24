@@ -17,6 +17,7 @@ def generate_instruction(
     chunk: str,
     model: Optional[str] = None,
     device: Optional[str] = None,
+    prompt: Optional[str] = None,
     retry_count: int = 0,
 ) -> Optional[Dict[str, str]]:
     """
@@ -36,7 +37,7 @@ def generate_instruction(
 
     try:
         # Format the prompt with the chunk
-        prompt = INSTRUCTION_PROMPT.format(chunk=chunk)
+        prompt_text = (prompt or INSTRUCTION_PROMPT).format(chunk=chunk)
         target_model = model or OLLAMA_MODEL
 
         # Call Ollama API
@@ -50,7 +51,7 @@ def generate_instruction(
 
         response = ollama.chat(
             model=target_model,
-            messages=[{"role": "user", "content": prompt}],
+            messages=[{"role": "user", "content": prompt_text}],
             options=options,
         )
 
@@ -86,7 +87,11 @@ def generate_instruction(
             logger.info(f"Retrying... (attempt {retry_count + 1}/{MAX_RETRIES})")
             time.sleep(2)  # Brief delay before retry
             return generate_instruction(
-                chunk, model=model, device=device, retry_count=retry_count + 1
+                chunk,
+                model=model,
+                device=device,
+                prompt=prompt,
+                retry_count=retry_count + 1,
             )
         return None
 
@@ -97,7 +102,11 @@ def generate_instruction(
             logger.info(f"Retrying... (attempt {retry_count + 1}/{MAX_RETRIES})")
             time.sleep(2)
             return generate_instruction(
-                chunk, model=model, device=device, retry_count=retry_count + 1
+                chunk,
+                model=model,
+                device=device,
+                prompt=prompt,
+                retry_count=retry_count + 1,
             )
         return None
 

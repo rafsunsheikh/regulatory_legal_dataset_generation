@@ -73,7 +73,7 @@ pip install -r requirements.txt
 uvicorn server:app --reload
 ```
 
-Open http://127.0.0.1:8000 to access the UI. Uploaded PDFs are stored in `data/raw/`, processed in the background, and new instruction pairs are appended to `data/processed/dataset.jsonl`. The UI shows per-file progress, estimated time remaining, generation counts, and lets you pick the Ollama model and device per upload (edit the `MODEL_OPTIONS` array in `web/index.html` to adjust choices); task details are also exposed at `/tasks`.
+Open http://127.0.0.1:8000 to access the UI. Uploaded PDFs are stored in `data/raw/`, processed in the background, and new instruction pairs are appended to `data/processed/dataset.jsonl`. The UI shows per-file progress, estimated time remaining, generation counts, and lets you pick the Ollama model and device per upload (edit the `MODEL_OPTIONS` array in `web/index.html` to adjust choices); task details are also exposed at `/tasks`. You can view/edit the prompt template before running an upload; the edited prompt is used for that run only.
 
 View the dataset and stats at http://127.0.0.1:8000/dataset. That page streams entries from `data/processed/dataset.jsonl` (paged) and shows quick stats by source/model/device and average instruction length.
 

@@ -114,6 +114,17 @@
                 min-width: 160px;
             }
 
+            textarea {
+                width: 100%;
+                min-height: 160px;
+                background: var(--panel);
+                color: var(--text);
+                border: 1px solid var(--panel-border);
+                border-radius: 12px;
+                padding: 12px;
+                font-family: "Sora", "Segoe UI", sans-serif;
+            }
+
             .grid {
                 display: grid;
                 grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
@@ -246,6 +257,17 @@
                     >View dataset →</a
                 >
             </div>
+            <div class="card" style="margin-top: 12px">
+                <div class="meta" style="justify-content: space-between">
+                    <span>Prompt template</span>
+                    <span class="small" id="promptMeta"></span>
+                </div>
+                <textarea id="promptInput" name="prompt"></textarea>
+                <div class="small">
+                    Edit before uploading to override the default prompt for
+                    this run.
+                </div>
+            </div>
             <div id="cards" class="grid"></div>
             <footer>
                 Progress updates every 2 seconds. Dataset entries are appended
@@ -261,6 +283,8 @@
             const cards = document.getElementById("cards");
             const uploadBtn = document.getElementById("uploadBtn");
             const ollamaStatus = document.getElementById("ollamaStatus");
+            const promptInput = document.getElementById("promptInput");
+            const promptMeta = document.getElementById("promptMeta");
 
             const MODEL_OPTIONS = ["llama3.1:8b", "phi3:mini", "mistral"];
             const DEVICE_OPTIONS = [
@@ -274,6 +298,7 @@
 
             populateModelOptions();
             populateDeviceOptions();
+            fetchPrompt();
 
             form.addEventListener("submit", async (e) => {
                 e.preventDefault();
@@ -290,6 +315,7 @@
                 );
                 formData.append("model", modelSelect.value);
                 formData.append("device", deviceSelect.value);
+                formData.append("prompt", promptInput.value);
 
                 try {
                     const res = await fetch("/upload", {
@@ -392,6 +418,19 @@
                 ).join("");
             }
 
+            async function fetchPrompt() {
+                try {
+                    const res = await fetch("/api/prompt");
+                    if (!res.ok) throw new Error("Failed to fetch prompt");
+                    const data = await res.json();
+                    promptInput.value = data.prompt || "";
+                    updatePromptMeta();
+                    promptInput.addEventListener("input", updatePromptMeta);
+                } catch (err) {
+                    console.warn(err);
+                }
+            }
+
             checkHealth();
             fetchTasks();
 
@@ -420,6 +459,11 @@
                     typeof mem === "number" ? `${mem.toFixed(0)} MB` : "";
                 const parts = [cpuStr, memStr].filter(Boolean);
                 return parts.length ? parts.join(" · ") : "";
+            }
+
+            function updatePromptMeta() {
+                const len = (promptInput.value || "").length;
+                promptMeta.textContent = `${len} chars`;
             }
         </script>
     </body>

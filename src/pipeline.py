@@ -57,6 +57,7 @@ def process_pdf(
     pdf_path: Path,
     model: Optional[str] = None,
     device: Optional[str] = None,
+    prompt: Optional[str] = None,
     progress_callback: Optional[Callable[[Dict], None]] = None,
 ) -> List[dict]:
     """
@@ -108,7 +109,9 @@ def process_pdf(
             total_chunks=total_chunks,
             progress=(i / total_chunks),
         )
-        instruction_data = generate_instruction(chunk, model=model, device=device)
+        instruction_data = generate_instruction(
+            chunk, model=model, device=device, prompt=prompt
+        )
         if instruction_data:
             instruction_data["source_file"] = pdf_path.name
             instruction_data["chunk_index"] = i
@@ -116,6 +119,8 @@ def process_pdf(
                 instruction_data["model"] = model
             if device:
                 instruction_data["device"] = device
+            if prompt:
+                instruction_data["prompt"] = prompt
             dataset_entries.append(instruction_data)
         else:
             logger.warning("Failed to generate instruction for chunk %s", i)
