@@ -1,0 +1,347 @@
+<!doctype html>
+<html lang="en">
+    <head>
+        <meta charset="UTF-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+        <title>Legal PDF Instruction Pipeline</title>
+        <style>
+            :root {
+                --bg: radial-gradient(
+                    circle at 10% 20%,
+                    #1b2b52,
+                    #0d1224 40%,
+                    #0a0d18 80%
+                );
+                --panel: rgba(255, 255, 255, 0.08);
+                --panel-border: rgba(255, 255, 255, 0.14);
+                --accent: #8fe3cf;
+                --accent-2: #f7c266;
+                --text: #e9eef7;
+                --muted: #b3c0d9;
+                --warn: #f69b64;
+                --error: #ff6b6b;
+                --success: #6ad0a7;
+            }
+
+            * {
+                box-sizing: border-box;
+            }
+            body {
+                font-family: "Sora", "Segoe UI", sans-serif;
+                color: var(--text);
+                margin: 0;
+                min-height: 100vh;
+                background: var(--bg);
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                padding: 24px;
+            }
+
+            .shell {
+                width: min(1100px, 100%);
+                background: linear-gradient(
+                    145deg,
+                    rgba(255, 255, 255, 0.06),
+                    rgba(255, 255, 255, 0.02)
+                );
+                border: 1px solid var(--panel-border);
+                border-radius: 16px;
+                padding: 24px;
+                box-shadow: 0 20px 80px rgba(0, 0, 0, 0.45);
+                backdrop-filter: blur(12px);
+            }
+
+            h1 {
+                margin: 0 0 8px 0;
+                letter-spacing: -0.01em;
+                font-size: 26px;
+            }
+
+            p.lead {
+                margin: 0 0 20px 0;
+                color: var(--muted);
+            }
+
+            form {
+                display: flex;
+                gap: 12px;
+                align-items: center;
+                flex-wrap: wrap;
+                margin-bottom: 16px;
+            }
+
+            input[type="file"] {
+                color: var(--muted);
+                background: var(--panel);
+                padding: 10px;
+                border: 1px dashed var(--panel-border);
+                border-radius: 10px;
+            }
+
+            button {
+                background: linear-gradient(
+                    120deg,
+                    var(--accent),
+                    var(--accent-2)
+                );
+                color: #0c1224;
+                border: none;
+                padding: 12px 18px;
+                border-radius: 10px;
+                font-weight: 600;
+                cursor: pointer;
+                transition:
+                    transform 0.1s ease,
+                    box-shadow 0.2s ease;
+            }
+
+            button:active {
+                transform: translateY(1px);
+            }
+            button:disabled {
+                opacity: 0.6;
+                cursor: not-allowed;
+                box-shadow: none;
+            }
+
+            .grid {
+                display: grid;
+                grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+                gap: 14px;
+                margin-top: 12px;
+            }
+
+            .card {
+                background: var(--panel);
+                border: 1px solid var(--panel-border);
+                border-radius: 12px;
+                padding: 14px;
+                display: flex;
+                flex-direction: column;
+                gap: 8px;
+            }
+
+            .meta {
+                display: flex;
+                justify-content: space-between;
+                color: var(--muted);
+                font-size: 13px;
+            }
+            .status {
+                font-weight: 700;
+                letter-spacing: 0.01em;
+            }
+            .status.processing {
+                color: var(--accent);
+            }
+            .status.completed {
+                color: var(--success);
+            }
+            .status.failed {
+                color: var(--error);
+            }
+            .status.queued {
+                color: var(--warn);
+            }
+
+            .progress {
+                width: 100%;
+                height: 8px;
+                background: rgba(255, 255, 255, 0.05);
+                border-radius: 10px;
+                overflow: hidden;
+                border: 1px solid var(--panel-border);
+            }
+            .progress span {
+                display: block;
+                height: 100%;
+                background: linear-gradient(
+                    120deg,
+                    var(--accent),
+                    var(--accent-2)
+                );
+                width: 0%;
+                transition: width 0.3s ease;
+            }
+
+            .pill {
+                display: inline-flex;
+                align-items: center;
+                gap: 6px;
+                background: rgba(255, 255, 255, 0.06);
+                padding: 6px 10px;
+                border-radius: 999px;
+                font-size: 12px;
+                border: 1px solid var(--panel-border);
+                color: var(--muted);
+            }
+
+            .message {
+                color: var(--muted);
+                font-size: 13px;
+            }
+            footer {
+                margin-top: 14px;
+                color: var(--muted);
+                font-size: 13px;
+            }
+        </style>
+    </head>
+    <body>
+        <div class="shell">
+            <h1>Legal PDF → Instruction Dataset</h1>
+            <p class="lead">
+                Upload one or more PDFs. The server will extract, chunk, and
+                generate instruction/response pairs while appending to the
+                dataset.
+            </p>
+            <form id="uploadForm">
+                <input
+                    id="fileInput"
+                    type="file"
+                    name="files"
+                    accept="application/pdf"
+                    multiple
+                />
+                <button id="uploadBtn" type="submit">
+                    Upload &amp; Process
+                </button>
+                <span class="pill" id="ollamaStatus">Waiting for status…</span>
+            </form>
+            <div id="cards" class="grid"></div>
+            <footer>
+                Progress updates every 2 seconds. Dataset entries are appended
+                to <code>data/processed/dataset.jsonl</code>.
+            </footer>
+        </div>
+
+        <script>
+            const fileInput = document.getElementById("fileInput");
+            const form = document.getElementById("uploadForm");
+            const cards = document.getElementById("cards");
+            const uploadBtn = document.getElementById("uploadBtn");
+            const ollamaStatus = document.getElementById("ollamaStatus");
+
+            let tasks = {};
+            let poller = null;
+
+            form.addEventListener("submit", async (e) => {
+                e.preventDefault();
+                if (!fileInput.files.length) {
+                    alert("Please choose at least one PDF.");
+                    return;
+                }
+                uploadBtn.disabled = true;
+                uploadBtn.textContent = "Uploading...";
+
+                const formData = new FormData();
+                Array.from(fileInput.files).forEach((file) =>
+                    formData.append("files", file),
+                );
+
+                try {
+                    const res = await fetch("/upload", {
+                        method: "POST",
+                        body: formData,
+                    });
+                    if (!res.ok)
+                        throw new Error(`Upload failed (${res.status})`);
+                    const data = await res.json();
+                    data.tasks.forEach((task) => (tasks[task.id] = task));
+                    render();
+                    startPolling();
+                } catch (err) {
+                    alert(err.message || "Upload failed");
+                } finally {
+                    uploadBtn.disabled = false;
+                    uploadBtn.textContent = "Upload & Process";
+                    fileInput.value = "";
+                }
+            });
+
+            async function fetchTasks() {
+                try {
+                    const res = await fetch("/tasks");
+                    if (!res.ok) throw new Error("Failed to fetch tasks");
+                    const data = await res.json();
+                    data.tasks.forEach((t) => (tasks[t.id] = t));
+                    render();
+                } catch (err) {
+                    console.warn(err);
+                }
+            }
+
+            function startPolling() {
+                if (poller) return;
+                poller = setInterval(fetchTasks, 2000);
+            }
+
+            function render() {
+                const list = Object.values(tasks).sort((a, b) =>
+                    a.filename.localeCompare(b.filename),
+                );
+                if (!list.length) {
+                    cards.innerHTML =
+                        '<div class="card"><div class="message">No uploads yet. Add PDFs to get started.</div></div>';
+                    return;
+                }
+                cards.innerHTML = list
+                    .map((task) => {
+                        const pct = Math.round((task.progress || 0) * 100);
+                        const eta = formatEta(task);
+                        return `
+          <div class="card">
+            <div class="meta">
+              <span>${task.filename}</span>
+              <span class="status ${task.status}">${task.status}</span>
+            </div>
+            <div class="progress"><span style="width:${pct}%"></span></div>
+            <div class="meta">
+              <span>${pct}%</span>
+              <span>${eta}</span>
+            </div>
+            <div class="meta">
+              <span>${task.generated || 0} entries</span>
+              <span></span>
+            </div>
+            <div class="message">${task.message || ""}${task.error ? " · " + task.error : ""}</div>
+          </div>
+        `;
+                    })
+                    .join("");
+            }
+
+            async function checkHealth() {
+                try {
+                    const res = await fetch("/health");
+                    if (!res.ok) throw new Error();
+                    const data = await res.json();
+                    ollamaStatus.textContent = "Server ready";
+                    ollamaStatus.style.color = "var(--success)";
+                } catch (err) {
+                    ollamaStatus.textContent = "Server unreachable";
+                    ollamaStatus.style.color = "var(--error)";
+                }
+            }
+
+            checkHealth();
+            fetchTasks();
+
+            function formatEta(task) {
+                if (task.status === "completed") return "Done";
+                if (task.status === "failed") return "Failed";
+                if (
+                    typeof task.eta_seconds !== "number" ||
+                    !isFinite(task.eta_seconds)
+                )
+                    return "ETA: estimating…";
+                const secs = Math.max(0, Math.round(task.eta_seconds));
+                const minutes = Math.floor(secs / 60);
+                const rem = secs % 60;
+                if (minutes === 0) return `ETA: ${rem}s`;
+                return `ETA: ${minutes}m ${rem}s`;
+            }
+        </script>
+    </body>
+</html>

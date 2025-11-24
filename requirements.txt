@@ -1,0 +1,22 @@
+# PDF Processing
+pypdf==4.0.1
+
+# Text Chunking
+langchain-text-splitters==0.2.2
+
+# Ollama Integration
+ollama==0.3.3
+
+# Data Validation
+pydantic==2.9.2
+
+# Progress Tracking
+tqdm==4.66.5
+
+# JSON handling
+jsonlines==4.0.0
+
+# Web API & uploads
+fastapi==0.115.5
+uvicorn[standard]==0.30.6
+python-multipart==0.0.9
