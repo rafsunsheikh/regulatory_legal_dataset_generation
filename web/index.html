@@ -39,7 +39,7 @@
             }
 
             .shell {
-                width: min(1100px, 100%);
+                width: min(1200px, 100%);
                 background: linear-gradient(
                     145deg,
                     rgba(255, 255, 255, 0.06),
@@ -61,6 +61,61 @@
             p.lead {
                 margin: 0 0 20px 0;
                 color: var(--muted);
+            }
+
+            .layout {
+                display: grid;
+                grid-template-columns: 320px 1fr;
+                gap: 16px;
+                align-items: start;
+            }
+
+            .sidebar {
+                position: sticky;
+                top: 16px;
+                align-self: start;
+                background: var(--panel);
+                border: 1px solid var(--panel-border);
+                border-radius: 12px;
+                padding: 12px;
+            }
+
+            .sidebar h3 {
+                margin: 0 0 8px 0;
+                font-size: 16px;
+            }
+
+            .nav {
+                display: flex;
+                flex-direction: column;
+                gap: 6px;
+                padding: 0;
+                margin: 0 0 10px 0;
+                list-style: none;
+            }
+
+            .nav a {
+                text-decoration: none;
+                color: var(--text);
+                padding: 8px 10px;
+                border-radius: 10px;
+                border: 1px solid transparent;
+                background: rgba(255, 255, 255, 0.04);
+            }
+
+            .nav a:hover {
+                border-color: var(--panel-border);
+                background: rgba(255, 255, 255, 0.07);
+            }
+
+            .main {
+                display: flex;
+                flex-direction: column;
+                gap: 12px;
+            }
+
+            .sidebar .card {
+                margin-top: 10px;
             }
 
             form {
@@ -127,8 +182,8 @@
 
             .config-grid {
                 display: grid;
-                grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
-                gap: 10px;
+                grid-template-columns: 1fr;
+                gap: 8px;
                 margin-top: 10px;
             }
 
@@ -152,6 +207,7 @@
                 border: 1px solid var(--panel-border);
                 background: var(--panel);
                 color: var(--text);
+                width: 100%;
             }
 
             .grid {
@@ -250,125 +306,174 @@
                 generate instruction/response pairs while appending to the
                 dataset.
             </p>
-            <div
-                class="row"
-                style="
-                    justify-content: space-between;
-                    align-items: center;
-                    gap: 8px;
-                "
-            >
-                <form
-                    id="uploadForm"
-                    style="
-                        flex: 1;
-                        display: flex;
-                        gap: 12px;
-                        align-items: center;
-                        flex-wrap: wrap;
-                    "
-                >
-                    <input
-                        id="fileInput"
-                        type="file"
-                        name="files"
-                        accept="application/pdf"
-                        multiple
-                    />
-                    <select id="modelSelect" name="model"></select>
-                    <select id="deviceSelect" name="device"></select>
-                    <button id="uploadBtn" type="submit">
-                        Upload &amp; Process
-                    </button>
-                    <span class="pill" id="ollamaStatus"
-                        >Waiting for status…</span
+            <div class="layout">
+                <aside class="sidebar">
+                    <div class="small" style="margin-bottom: 8px">
+                        Adjust settings, then upload to start processing.
+                    </div>
+
+                    <div class="card" id="model-selection">
+                        <div
+                            class="meta"
+                            style="justify-content: space-between"
+                        >
+                            <span>Model selection</span>
+                            <span class="small">Choose Ollama model</span>
+                        </div>
+                        <select id="modelSelect" name="model"></select>
+                    </div>
+
+                    <div class="card" id="device-selection">
+                        <div
+                            class="meta"
+                            style="justify-content: space-between"
+                        >
+                            <span>Device selection</span>
+                            <span class="small">Run on GPU/CPU</span>
+                        </div>
+                        <select id="deviceSelect" name="device"></select>
+                    </div>
+
+                    <div class="card" id="prompt-template">
+                        <div
+                            class="meta"
+                            style="justify-content: space-between"
+                        >
+                            <span>Prompt template</span>
+                            <span class="small" id="promptMeta"></span>
+                        </div>
+                        <textarea id="promptInput" name="prompt"></textarea>
+                        <div class="small">
+                            Edit before uploading to override the default prompt
+                            for this run.
+                        </div>
+                    </div>
+
+                    <div class="card" id="run-config">
+                        <div
+                            class="meta"
+                            style="justify-content: space-between"
+                        >
+                            <span>Run configuration</span>
+                            <span class="small"
+                                >Overrides for this run only</span
+                            >
+                        </div>
+                        <div class="config-grid">
+                            <div class="config-field">
+                                <label for="chunkSize"
+                                    >Chunk size
+                                    <span class="small"
+                                        >Characters per chunk</span
+                                    ></label
+                                >
+                                <input
+                                    id="chunkSize"
+                                    name="chunk_size"
+                                    type="number"
+                                    min="100"
+                                    step="50"
+                                />
+                            </div>
+                            <div class="config-field">
+                                <label for="chunkOverlap"
+                                    >Chunk overlap
+                                    <span class="small"
+                                        >Context carried between chunks</span
+                                    ></label
+                                >
+                                <input
+                                    id="chunkOverlap"
+                                    name="chunk_overlap"
+                                    type="number"
+                                    min="0"
+                                    step="50"
+                                />
+                            </div>
+                            <div class="config-field">
+                                <label for="temperature"
+                                    >Temperature
+                                    <span class="small"
+                                        >Creativity (0-1)</span
+                                    ></label
+                                >
+                                <input
+                                    id="temperature"
+                                    name="temperature"
+                                    type="number"
+                                    min="0"
+                                    max="1"
+                                    step="0.05"
+                                />
+                            </div>
+                            <div class="config-field">
+                                <label for="maxRetries"
+                                    >Max retries
+                                    <span class="small"
+                                        >Generation retries per chunk</span
+                                    ></label
+                                >
+                                <input
+                                    id="maxRetries"
+                                    name="max_retries"
+                                    type="number"
+                                    min="0"
+                                    max="10"
+                                    step="1"
+                                />
+                            </div>
+                        </div>
+                    </div>
+
+                    <a
+                        class="pill"
+                        style="
+                            text-decoration: none;
+                            padding: 10px 14px;
+                            margin-top: 10px;
+                            display: inline-block;
+                            text-align: center;
+                        "
+                        href="/dataset"
+                        >View dataset →</a
                     >
-                </form>
-                <a
-                    class="pill"
-                    style="text-decoration: none; padding: 10px 14px"
-                    href="/dataset"
-                    >View dataset →</a
-                >
-            </div>
-            <div class="card" style="margin-top: 12px">
-                <div class="meta" style="justify-content: space-between">
-                    <span>Prompt template</span>
-                    <span class="small" id="promptMeta"></span>
-                </div>
-                <textarea id="promptInput" name="prompt"></textarea>
-                <div class="small">
-                    Edit before uploading to override the default prompt for
-                    this run.
-                </div>
-            </div>
-            <div id="cards" class="grid"></div>
-            <div class="card" style="margin-top: 12px">
-                <div class="meta" style="justify-content: space-between">
-                    <span>Run configuration</span>
-                    <span class="small">Overrides for this run only</span>
-                </div>
-                <div class="config-grid">
-                    <div class="config-field">
-                        <label for="chunkSize"
-                            >Chunk size
+                </aside>
+                <div class="main">
+                    <div class="card" style="margin-top: 4px">
+                        <div
+                            class="meta"
+                            style="justify-content: space-between"
+                        >
+                            <span>Upload PDFs</span>
                             <span class="small"
-                                >Characters per chunk</span
-                            ></label
+                                >Select PDFs, then start processing</span
+                            >
+                        </div>
+                        <form
+                            id="uploadForm"
+                            style="
+                                display: flex;
+                                gap: 12px;
+                                align-items: center;
+                                flex-wrap: wrap;
+                            "
                         >
-                        <input
-                            id="chunkSize"
-                            name="chunk_size"
-                            type="number"
-                            min="100"
-                            step="50"
-                        />
+                            <input
+                                id="fileInput"
+                                type="file"
+                                name="files"
+                                accept="application/pdf"
+                                multiple
+                            />
+                            <button id="uploadBtn" type="submit">
+                                Upload &amp; Process
+                            </button>
+                            <span class="pill" id="ollamaStatus"
+                                >Waiting for status…</span
+                            >
+                        </form>
                     </div>
-                    <div class="config-field">
-                        <label for="chunkOverlap"
-                            >Chunk overlap
-                            <span class="small"
-                                >Context carried between chunks</span
-                            ></label
-                        >
-                        <input
-                            id="chunkOverlap"
-                            name="chunk_overlap"
-                            type="number"
-                            min="0"
-                            step="50"
-                        />
-                    </div>
-                    <div class="config-field">
-                        <label for="temperature"
-                            >Temperature
-                            <span class="small">Creativity (0-1)</span></label
-                        >
-                        <input
-                            id="temperature"
-                            name="temperature"
-                            type="number"
-                            min="0"
-                            max="1"
-                            step="0.05"
-                        />
-                    </div>
-                    <div class="config-field">
-                        <label for="maxRetries"
-                            >Max retries
-                            <span class="small"
-                                >Generation retries per chunk</span
-                            ></label
-                        >
-                        <input
-                            id="maxRetries"
-                            name="max_retries"
-                            type="number"
-                            min="0"
-                            max="10"
-                            step="1"
-                        />
-                    </div>
+                    <div id="cards" class="grid"></div>
                 </div>
             </div>
             <footer>
@@ -384,7 +489,7 @@
                         rel="noreferrer"
                         >MD Rafsun Sheikh</a
                     >
-                    · © 2025
+                    · © 2024
                 </span>
             </footer>
         </div>

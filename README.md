@@ -38,6 +38,12 @@ Open http://127.0.0.1:8000 to access the UI. Uploaded PDFs are stored in `data/r
 
 View the dataset and stats at http://127.0.0.1:8000/dataset. That page streams entries from `data/processed/dataset.jsonl` (paged) and shows quick stats by source/model/device and average instruction length.
 
+## 📸 Screenshots
+
+![Upload and configuration UI](assets/legal_dataset_ss_1.png)
+
+![Dataset viewer and stats](assets/legal_dataset_ss_2.png)
+
 You can also choose a device hint (auto/GPU/CPU) and see basic resource usage (CPU %, RSS) for each running task. The CPU-only option forces `num_gpu=0` in the Ollama call to stay off the GPU.
 
 
