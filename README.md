@@ -10,7 +10,14 @@ Convert legal regulation PDFs into instruction datasets suitable for fine-tuning
 - **Python 3.8+**
 - **Ollama** installed and running ([Install Ollama](https://ollama.ai))
 
-### 2. Install Ollama Model
+
+### 2. Install Dependencies
+
+```bash
+pip install -r requirements.txt
+```
+
+### 3. Install Ollama Model
 
 ```bash
 ollama serve # Start the Ollama server
@@ -19,23 +26,16 @@ ollama pull mistral
 ollama pull phi3:mini 
 ```
 
-### 3. Install Dependencies
 
-```bash
-pip install -r requirements.txt
-```
 
 
 ## 🖥️ Run the Web UI
 
 # Start the web server
+```bash
 uvicorn server:app --reload
 ```
 
-### 5. Run the Pipeline
-```bash
-python main.py
-```
 Open http://127.0.0.1:8000 to access the UI. Uploaded PDFs are stored in `data/raw/`, processed in the background, and new instruction pairs are appended to `data/processed/dataset.jsonl`. The UI shows per-file progress, estimated time remaining, generation counts, and lets you pick the Ollama model and device per upload (edit the `MODEL_OPTIONS` array in `web/index.html` to adjust choices); task details are also exposed at `/tasks`. You can view/edit the prompt template and override run-time config (chunk size/overlap, temperature, retries) before running an upload; the edited values apply to that run only.
 
 
@@ -46,6 +46,8 @@ The pipeline will:
 2. Split text into contextual chunks
 3. Generate instruction-response pairs using llama3.1:8b
 4. Save the dataset to `data/processed/dataset.jsonl`
+
+
 You can also choose a device hint (auto/GPU/CPU) and see basic resource usage (CPU %, RSS) for each running task. The CPU-only option forces `num_gpu=0` in the Ollama call to stay off the GPU.
 
 
